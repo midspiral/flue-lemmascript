@@ -55,6 +55,10 @@ All paths below are in `packages/runtime/src/`.
   unknown, and only above the reserve threshold. In place; drove two toolchain
   additions — numeric `||` truthiness and a `;`-separated `//@ declare-type` field
   list.
+- **`isPublicSessionName` + name builders** (#13) — the reserved-namespace guard:
+  public ⟺ neither `task:`/`action:` prefix, and the two name constructors produce
+  names the guard always rejects (`!isPublicSessionName`). In place, no new
+  toolchain (`startsWith` over a template-literal concat, discharged automatically).
 
 Everything after this point is the roadmap.
 
@@ -273,13 +277,21 @@ models as a permutation (`multiset` preserved) rather than emitting a broken
 `SeqSortBy(xs, undefined)` — enough for the membership/disjointness properties,
 which don't depend on the ordering. The set-spread modeling is the open blocker.
 
-### 8. `buildConversationContextEntries` — Post-Compaction Slice (`conversation-reducer.ts:660`)
+### 8. `buildConversationContextEntries` — Post-Compaction Slice (`conversation-reducer.ts:660`) — ⏸ awkward fit
 
 Finds the latest compaction, resolves `keptStart`, and concatenates
 [summary] + kept-before-compaction slice + after-compaction slice.
 - `keptStart` and `latestCompactionIndex` are in range; the two slices don't
   overlap and don't include the compaction entry twice.
 - No-compaction path returns the full projection unchanged.
+
+**Probed, set aside.** The meaningful property is *slice-bounds well-formedness*,
+which is internal (about `keptStart`/`latestCompactionIndex`) and awkward to
+surface as an `\result` ensures, while the return is wrapped in heavy plumbing
+(`Date`, array spreads, `pathToContextEntries`). The probe did land one reusable
+toolchain feature — `Array.prototype.findLastIndex` (the reverse-scan analogue of
+`findIndex`), which `buildConversationContextEntries` uses. Revisit via internal
+`//@ assert`s under `//@ autohavoc` if the bounds property is wanted.
 
 ### 9. `shouldCompact` + `calculateContextTokens` (`compaction.ts:170`, `:76`) — ✅ **Verified in place**
 
@@ -322,13 +334,17 @@ Model `JSON.parse`/`JSON.stringify` as spec-level inverses (cf. CharmChat's
 - **Total:** malformed input returns `undefined`, never throws (the `try/catch`
   and the 3-string-array shape check).
 
-### 13. `isPublicSessionName` and prefix predicates (`session-identity.ts`)
+### 13. `isPublicSessionName` and prefix predicates (`session-identity.ts`) — ✅ **Verified in place**
 
 Boolean algebra over string prefixes (the `UUID_PATTERN` regex is a trust
-boundary — keep `isUuid` opaque).
+boundary — `isUuid` stays opaque, out of model). **Proven**:
 - `isPublicSessionName(n) === !n.startsWith('task:') && !n.startsWith('action:')`.
 - `createTaskSessionName(...)` and `createActionScopeName(...)` outputs are never
-  public (`!isPublicSessionName`).
+  public (`!isPublicSessionName`) — the reserved-namespace safety invariant.
+
+`startsWith` lowers to a concrete prefix check; Dafny discharges the prefix
+property over the template-literal concatenation automatically. In place, no new
+toolchain.
 
 ---
 
@@ -356,6 +372,8 @@ boundary — keep `isUuid` opaque).
 | ✅ | `deriveCompactionDefaults` (#5) | **Done** — guarded reserve-clamp bounds; guards proven exact. |
 | ✅ | `calculateContextTokens` / `shouldCompact` (#9) | **Done** — gate predicates; drove numeric `||` + `;`-separated `declare-type`. |
 | ⏸ | `computeFileLists` (#7) | Blocked on set-spread modeling; bare `.sort()` (permutation) landed. |
+| ✅ | `isPublicSessionName` + name builders (#13) | **Done** — reserved-namespace invariant; constructed names never public. |
+| ⏸ | `buildConversationContextEntries` (#8) | Awkward (internal bounds property); `findLastIndex` landed from the probe. |
 | → | `pathToContextEntries` no-orphan (#4) | Flue's projection-layer complement to pi (unlocked by #3). |
 | | `classifySubmissionState` (#1) | Flagship Flue-specific correctness result. |
 

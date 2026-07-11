@@ -27,6 +27,7 @@ harness.
 | [`compaction.ts`](packages/runtime/src/compaction.ts) | `deriveCompactionDefaults` | `enabled`/`keepRecentTokens` passthrough; `maxTokens ≥ 1024 ⟹ reserve ≤ maxTokens`; `contextWindow > 1024 ⟹ reserve < contextWindow` (headroom) | ✓ |
 | [`compaction.ts`](packages/runtime/src/compaction.ts) | `calculateContextTokens` | prefers `totalTokens` when non-zero, else the component-token sum | ✓ |
 | [`compaction.ts`](packages/runtime/src/compaction.ts) | `shouldCompact` | disabled or unknown window ⟹ never fires; fires ⟹ over the reserve threshold | ✓ |
+| [`session-identity.ts`](packages/runtime/src/session-identity.ts) | `isPublicSessionName` + name builders | public ⟺ neither reserved prefix; `createTaskSessionName`/`createActionScopeName` outputs are never public | ✓ |
 
 ## What's Verified
 
@@ -134,6 +135,23 @@ reserve threshold. Both bodies byte-identical. Together they drove two toolchain
 additions: numeric `||` truthiness (`a || b` on numbers → `a ≠ 0 ? a : b`, which
 previously mis-lowered to `int ∨ int`) and a `//@ declare-type` field list that
 separates on `;` as well as `,` (for the `Usage` shadow).
+
+### `isPublicSessionName` + name builders — [`session-identity.ts`](packages/runtime/src/session-identity.ts)
+
+The reserved-namespace guard. A session name is public unless it begins with a
+reserved prefix (`task:` for delegated tasks, `action:` for Actions). We prove
+the predicate matches that definition exactly, and — the safety result — that the
+two name **constructors** produce names the guard always rejects:
+
+```
+//@ ensures !isPublicSessionName(\result)   // on createTaskSessionName / createActionScopeName
+```
+
+so a reserved name can never be mistaken for a public one. `startsWith` lowers to
+a concrete prefix check (`|s| >= |p| && s[..|p|] == p`); Dafny discharges the
+prefix property over the template-literal concatenation automatically. The
+`UUID_PATTERN` regex (`isUuid`) is a trust boundary — out of model, and not part
+of the claim.
 
 ## Running the verification
 
