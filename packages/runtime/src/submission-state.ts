@@ -36,6 +36,9 @@ import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import { isContextOverflow } from './compaction.ts';
 
+//@ declare-type AgentMessage { role: string }
+//@ declare-type AssistantMessage = AgentMessage
+
 export type CanonicalSubmissionEntry =
 	| { id: string; type: 'message'; message: AgentMessage }
 	| { id: string; type: 'compaction' };
@@ -292,6 +295,7 @@ export function findTrailingPartialToolBatch(
 	return { entryId: assistantEntry.id, assistant, toolCalls };
 }
 
+//@ extern
 export function isRetryableModelError(message: AssistantMessage): boolean {
 	if (message.stopReason !== 'error' || !message.errorMessage) return false;
 	return /overloaded|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server.?error|network.?error|connection.?(?:reset|refused|lost)|socket hang up|fetch failed|timed? out|timeout|terminated/i.test(
@@ -306,8 +310,13 @@ function isCompletedAssistantResponse(message: AssistantMessage): boolean {
 export function countConsecutiveRetryableModelErrors(
 	entries: readonly CanonicalSubmissionEntry[],
 ): number {
+	//@ verify
+	//@ ensures 0 <= \result && \result <= entries.length
 	let count = 0;
 	for (let i = entries.length - 1; i >= 0; i--) {
+		//@ invariant 0 <= count && count <= entries.length - 1 - i
+		//@ invariant count <= entries.length
+		//@ decreases i + 1
 		const entry = entries[i];
 		if (entry?.type !== 'message') continue;
 		// User messages mark an operation boundary: errors from a previous
