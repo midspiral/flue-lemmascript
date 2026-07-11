@@ -40,6 +40,9 @@ All paths below are in `packages/runtime/src/`.
   object, `!obj → false`).
 - **`addUsage` / `emptyUsage`** (#6) — proven a **commutative monoid** (identity,
   commutativity, associativity), in place, no new toolchain.
+- **`findValidCutPoints`** (#2) — the pi echo: every returned cut index is in
+  range and never a `toolResult` (no orphan at the cut), over Flue's message
+  model. In place, no new toolchain.
 
 Everything after this point is the roadmap.
 
@@ -322,9 +325,9 @@ boundary — keep `isUuid` opaque).
 | ✅ | `countConsecutiveRetryableModelErrors` (#1b) | **Done** — proven equal to a recursive spec, in place. |
 | ✅ | `isCompleteToolBatch` (#3) | **Done** — length + positional `(id, name)` match, in place. |
 | ✅ | `addUsage` monoid (#6) | **Done** — commutative monoid, no new toolchain. |
-| → | `findValidCutPoints` (#2) | Direct pi port — reuse the proven pattern. |
+| ✅ | `findValidCutPoints` (#2) | **Done** — no orphan at the cut, over Flue's model. |
+| → | `pathToContextEntries` no-orphan (#4) | Flue's projection-layer complement to pi (unlocked by #3). |
 | | `classifySubmissionState` (#1) | Flagship Flue-specific correctness result. |
-| | `pathToContextEntries` no-orphan (#4) | Flue's projection-layer complement to pi. |
 
 ---
 

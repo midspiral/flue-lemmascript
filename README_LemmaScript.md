@@ -23,6 +23,7 @@ harness.
 | [`submission-state.ts`](packages/runtime/src/submission-state.ts) | `countConsecutiveRetryableModelErrors` | functional: equals a recursive spec of the backward scan (+ bounded output, termination) | ✓ |
 | [`conversation-reducer.ts`](packages/runtime/src/conversation-reducer.ts) | `isCompleteToolBatch` | length agreement + positional `(id, name)` match between tool calls and results | ✓ |
 | [`usage.ts`](packages/runtime/src/usage.ts) | `addUsage` / `emptyUsage` | commutative monoid — left/right identity, commutativity, associativity | ✓ |
+| [`compaction.ts`](packages/runtime/src/compaction.ts) | `findValidCutPoints` | every returned cut index is in range and never a `toolResult` (no orphan at the cut) | ✓ |
 
 ## What's Verified
 
@@ -86,6 +87,16 @@ functions (bodies byte-identical), we prove `emptyUsage()` is a left and right
 identity for `addUsage`, and that `addUsage` is commutative and associative —
 each as a spec-only lemma, discharged automatically from the field-wise integer
 sums. No-mutation is inherent: `//@ pure` functions can't mutate their arguments.
+
+### `findValidCutPoints` — [`compaction.ts`](packages/runtime/src/compaction.ts)
+
+The context-compaction cut-point selector — the same "never orphan a `toolResult`
+at the cut" property pi proved, over Flue's `AgentMessage[]` model (a `user`/
+`assistant` role whitelist rather than pi's role fall-through). We prove every
+returned index is in `[start, end)` and points at a `user` or `assistant`
+message — never a `toolResult` — so a retained suffix can't *begin* with an
+orphaned tool result. Two loop invariants carry both, exactly as in pi's proof;
+the `messages[i]?.role` optional-index access needed no new toolchain support.
 
 ## Running the verification
 

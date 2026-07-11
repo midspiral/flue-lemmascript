@@ -21,6 +21,8 @@ import { completeSimple, isContextOverflow } from '@earendil-works/pi-ai/compat'
 import type { PromptUsage } from './types.ts';
 import { addUsage, fromProviderUsage } from './usage.ts';
 
+//@ declare-type AgentMessage { role: string }
+
 // ─── Settings ───────────────────────────────────────────────────────────────
 
 export interface CompactionSettings {
@@ -393,8 +395,17 @@ Be concise. Focus on what's needed to understand the kept suffix.`;
 
 /** Valid cut points: user or assistant messages. Never cut at toolResult. */
 function findValidCutPoints(messages: AgentMessage[], start: number, end: number): number[] {
+	//@ verify
+	//@ requires 0 <= start && start <= end
+	//@ requires end <= messages.length
+	//@ ensures forall(k: nat, k < \result.length ==> start <= \result[k] && \result[k] < end)
+	//@ ensures forall(k: nat, k < \result.length ==> messages[\result[k]].role === 'user' || messages[\result[k]].role === 'assistant')
 	const cutPoints: number[] = [];
 	for (let i = start; i < end; i++) {
+		//@ invariant start <= i && i <= end
+		//@ invariant forall(k: nat, k < cutPoints.length ==> start <= cutPoints[k] && cutPoints[k] < i)
+		//@ invariant forall(k: nat, k < cutPoints.length ==> messages[cutPoints[k]].role === 'user' || messages[cutPoints[k]].role === 'assistant')
+		//@ decreases end - i
 		const role = messages[i]?.role;
 		if (role === 'user' || role === 'assistant') {
 			cutPoints.push(i);

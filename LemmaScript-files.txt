@@ -1,3 +1,4 @@
 packages/runtime/src/submission-state.ts
 packages/runtime/src/conversation-reducer.ts
 packages/runtime/src/usage.ts
+packages/runtime/src/compaction.ts
