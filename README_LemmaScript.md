@@ -21,7 +21,7 @@ harness.
 | File | Function | Property | Dafny |
 |---|---|---|---|
 | [`submission-state.ts`](packages/runtime/src/submission-state.ts) | `countConsecutiveRetryableModelErrors` | functional: equals a recursive spec of the backward scan (+ bounded output, termination) | ✓ |
-| [`conversation-reducer.ts`](packages/runtime/src/conversation-reducer.ts) | `isCompleteToolBatch` | length agreement + positional `(id, name)` match between tool calls and results | ✓ |
+| [`conversation-reducer.ts`](packages/runtime/src/conversation-reducer.ts) | `isCompleteToolBatch` | length agreement + positional `(id, name)` match + no duplicate call ids | ✓ |
 | [`usage.ts`](packages/runtime/src/usage.ts) | `addUsage` / `emptyUsage` | commutative monoid — left/right identity, commutativity, associativity | ✓ |
 | [`compaction.ts`](packages/runtime/src/compaction.ts) | `findValidCutPoints` | every returned cut index is in range and never a `toolResult` (no orphan at the cut) | ✓ |
 
@@ -65,13 +65,15 @@ each of which required LemmaScript toolchain support to express in place.
 
 Gates whether a persisted tool-use turn's results form a complete batch — the
 predicate that keeps orphaned tool results out of the model-facing projection.
-We prove that when it returns `true`, the lists agree in length and each result
-matches its call positionally by `(id, name)`:
+We prove that when it returns `true`, the lists agree in length, each result
+matches its call positionally by `(id, name)`, and no call id repeats (the `seen`
+set is proven to hold exactly the processed ids):
 
 ```
 //@ ensures \result ==> toolCalls.length === results.length
 //@ ensures \result ==> forall k. results[k].toolCallId === toolCalls[k].id
                                 && results[k].toolName === toolCalls[k].name
+//@ ensures \result ==> forall a, b. a < b ==> toolCalls[a].id !== toolCalls[b].id
 ```
 
 Body byte-identical; the tool-call/result element types are `//@ declare-type`

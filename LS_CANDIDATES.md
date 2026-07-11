@@ -35,9 +35,9 @@ All paths below are in `packages/runtime/src/`.
   `opt?.disc` guard, composing with discriminant narrowing) — so every target
   below now lands on a toolchain that handles this class of harness code.
 - **`isCompleteToolBatch`** (#3) — proven **in place**, byte-identical: on
-  `true`, tool calls and results agree in length and match positionally by
-  `(id, name)`. Drove one more toolchain addition (truthiness of a non-optional
-  object, `!obj → false`).
+  `true`, tool calls and results agree in length, match positionally by
+  `(id, name)`, and carry no duplicate call ids. Drove one more toolchain
+  addition (truthiness of a non-optional object, `!obj → false`).
 - **`addUsage` / `emptyUsage`** (#6) — proven a **commutative monoid** (identity,
   commutativity, associativity), in place, no new toolchain.
 - **`findValidCutPoints`** (#2) — the pi echo: every returned cut index is in

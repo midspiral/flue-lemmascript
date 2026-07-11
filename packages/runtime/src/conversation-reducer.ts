@@ -1039,12 +1039,15 @@ function isCompleteToolBatch(
 	//@ type index nat
 	//@ ensures \result ==> toolCalls.length === results.length
 	//@ ensures \result ==> forall(k: nat, k < toolCalls.length ==> results[k].toolCallId === toolCalls[k].id && results[k].toolName === toolCalls[k].name)
+	//@ ensures \result ==> forall(a: nat, forall(b: nat, a < b && b < toolCalls.length ==> toolCalls[a].id !== toolCalls[b].id))
 	if (toolCalls.length !== results.length) return false;
 	const seen = new Set<string>();
 	for (let index = 0; index < toolCalls.length; index++) {
 		//@ invariant index <= toolCalls.length
 		//@ invariant toolCalls.length === results.length
 		//@ invariant forall(k: nat, k < index ==> results[k].toolCallId === toolCalls[k].id && results[k].toolName === toolCalls[k].name)
+		//@ invariant forall(k: nat, k < index ==> seen.has(toolCalls[k].id))
+		//@ invariant forall(a: nat, forall(b: nat, a < b && b < index ==> toolCalls[a].id !== toolCalls[b].id))
 		//@ decreases toolCalls.length - index
 		const call = toolCalls[index];
 		const result = results[index];

@@ -7,6 +7,7 @@ datatype ToolResultMessage = ToolResultMessage(toolCallId: string, toolName: str
 method isCompleteToolBatch(toolCalls: seq<ToolCall>, results: seq<ToolResultMessage>) returns (res: bool)
   ensures (res ==> (|toolCalls| == |results|))
   ensures (res ==> forall k: nat :: ((k < |toolCalls|) ==> ((results[k].toolCallId == toolCalls[k].id) && (results[k].toolName == toolCalls[k].name))))
+  ensures (res ==> forall a: nat, b: nat :: ((a < b) ==> (b < |toolCalls|) ==> (toolCalls[a].id != toolCalls[b].id)))
 {
   if (|toolCalls| != |results|) {
     return false;
@@ -17,6 +18,8 @@ method isCompleteToolBatch(toolCalls: seq<ToolCall>, results: seq<ToolResultMess
     invariant (index <= |toolCalls|)
     invariant (|toolCalls| == |results|)
     invariant forall k: nat :: ((k < index) ==> ((results[k].toolCallId == toolCalls[k].id) && (results[k].toolName == toolCalls[k].name)))
+    invariant forall k: nat :: ((k < index) ==> (toolCalls[k].id in seen))
+    invariant forall a: nat, b: nat :: ((a < b) ==> (b < index) ==> (toolCalls[a].id != toolCalls[b].id))
     decreases (|toolCalls| - index)
   {
     var call := toolCalls[index];
