@@ -34,6 +34,10 @@ All paths below are in `packages/runtime/src/`.
   `noUncheckedIndexedAccess` optional-index modeling; optional-narrowing past an
   `opt?.disc` guard, composing with discriminant narrowing) — so every target
   below now lands on a toolchain that handles this class of harness code.
+- **`isCompleteToolBatch`** (#3) — proven **in place**, byte-identical: on
+  `true`, tool calls and results agree in length and match positionally by
+  `(id, name)`. Drove one more toolchain addition (truthiness of a non-optional
+  object, `!obj → false`).
 
 Everything after this point is the roadmap.
 
@@ -314,8 +318,8 @@ boundary — keep `isUuid` opaque).
 | Step | Candidate | Why |
 |------|-----------|-----|
 | ✅ | `countConsecutiveRetryableModelErrors` (#1b) | **Done** — proven equal to a recursive spec, in place. |
-| → | `isCompleteToolBatch` (#3) | Small predicate; unlocks #4. |
-| | `findValidCutPoints` (#2) | Direct pi port — reuse the proven pattern. |
+| ✅ | `isCompleteToolBatch` (#3) | **Done** — length + positional `(id, name)` match, in place. |
+| → | `findValidCutPoints` (#2) | Direct pi port — reuse the proven pattern. |
 | | `addUsage` monoid (#6) | Clean algebra; no message modeling. |
 | | `classifySubmissionState` (#1) | Flagship Flue-specific correctness result. |
 | | `pathToContextEntries` no-orphan (#4) | Flue's projection-layer complement to pi. |

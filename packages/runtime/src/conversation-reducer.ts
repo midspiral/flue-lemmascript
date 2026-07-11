@@ -1,5 +1,8 @@
 import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { AssistantMessage, ToolResultMessage, UserMessage } from '@earendil-works/pi-ai';
+
+//@ declare-type ToolCall { id: string, name: string }
+//@ declare-type ToolResultMessage { toolCallId: string, toolName: string }
 import type {
 	AssistantMessageStartedRecord,
 	AttachmentRef,
@@ -1031,9 +1034,18 @@ function isCompleteToolBatch(
 	toolCalls: Extract<AssistantMessage['content'][number], { type: 'toolCall' }>[],
 	results: ToolResultMessage[],
 ): boolean {
+	//@ verify
+	//@ type toolCalls ToolCall[]
+	//@ type index nat
+	//@ ensures \result ==> toolCalls.length === results.length
+	//@ ensures \result ==> forall(k: nat, k < toolCalls.length ==> results[k].toolCallId === toolCalls[k].id && results[k].toolName === toolCalls[k].name)
 	if (toolCalls.length !== results.length) return false;
 	const seen = new Set<string>();
 	for (let index = 0; index < toolCalls.length; index++) {
+		//@ invariant index <= toolCalls.length
+		//@ invariant toolCalls.length === results.length
+		//@ invariant forall(k: nat, k < index ==> results[k].toolCallId === toolCalls[k].id && results[k].toolName === toolCalls[k].name)
+		//@ decreases toolCalls.length - index
 		const call = toolCalls[index];
 		const result = results[index];
 		if (!call || !result || seen.has(call.id)) return false;

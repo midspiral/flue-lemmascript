@@ -21,8 +21,7 @@ harness.
 | File | Function | Property | Dafny |
 |---|---|---|---|
 | [`submission-state.ts`](packages/runtime/src/submission-state.ts) | `countConsecutiveRetryableModelErrors` | functional: equals a recursive spec of the backward scan (+ bounded output, termination) | ✓ |
-
-`check.sh dafny` → **3 verified, 0 errors**.
+| [`conversation-reducer.ts`](packages/runtime/src/conversation-reducer.ts) | `isCompleteToolBatch` | length agreement + positional `(id, name)` match between tool calls and results | ✓ |
 
 ## What's Verified
 
@@ -59,6 +58,25 @@ The generated Dafny composes four things the shipped source stacks on one line �
 `Some/None`), optional narrowing past the `entry?.type` guard, the
 `CanonicalSubmissionEntry` discriminated-union match, and a mid-loop `continue` —
 each of which required LemmaScript toolchain support to express in place.
+
+### `isCompleteToolBatch` — [`conversation-reducer.ts`](packages/runtime/src/conversation-reducer.ts)
+
+Gates whether a persisted tool-use turn's results form a complete batch — the
+predicate that keeps orphaned tool results out of the model-facing projection.
+We prove that when it returns `true`, the lists agree in length and each result
+matches its call positionally by `(id, name)`:
+
+```
+//@ ensures \result ==> toolCalls.length === results.length
+//@ ensures \result ==> forall k. results[k].toolCallId === toolCalls[k].id
+                                && results[k].toolName === toolCalls[k].name
+```
+
+Body byte-identical; the tool-call/result element types are `//@ declare-type`
+shadows and the inline `Extract<…>` parameter type is redirected with a
+`//@ type` override (no signature change). It drove one toolchain addition —
+truthiness of a non-optional object (`!obj → false`), which proves the shipped
+`!call || !result` bounds-guards are dead under the length invariant.
 
 ## Running the verification
 
