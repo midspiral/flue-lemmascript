@@ -12,7 +12,9 @@ import type { Usage } from '@earendil-works/pi-ai';
 import type { PromptUsage } from './types.ts';
 
 /** All-zero `PromptUsage`. Identity element for `addUsage`. */
+//@ pure
 export function emptyUsage(): PromptUsage {
+	//@ verify
 	return {
 		input: 0,
 		output: 0,
@@ -27,7 +29,9 @@ export function emptyUsage(): PromptUsage {
  * Field-wise sum of two `PromptUsage` values, including the nested `cost`
  * sub-object. Returns a fresh object; neither argument is mutated.
  */
+//@ pure
 export function addUsage(a: PromptUsage, b: PromptUsage): PromptUsage {
+	//@ verify
 	return {
 		input: a.input + b.input,
 		output: a.output + b.output,
@@ -43,6 +47,21 @@ export function addUsage(a: PromptUsage, b: PromptUsage): PromptUsage {
 		},
 	};
 }
+
+// --- Monoid laws for (PromptUsage, addUsage, emptyUsage), spec-only lemmas ---
+
+//@ verify
+//@ ensures addUsage(u, emptyUsage()) === u
+//@ ensures addUsage(emptyUsage(), u) === u
+function _usageIdentity(u: PromptUsage): void {}
+
+//@ verify
+//@ ensures addUsage(a, b) === addUsage(b, a)
+function _usageCommutes(a: PromptUsage, b: PromptUsage): void {}
+
+//@ verify
+//@ ensures addUsage(addUsage(a, b), c) === addUsage(a, addUsage(b, c))
+function _usageAssociates(a: PromptUsage, b: PromptUsage, c: PromptUsage): void {}
 
 /**
  * Convert pi-ai's `Usage` into Flue's public `PromptUsage`. The shapes are

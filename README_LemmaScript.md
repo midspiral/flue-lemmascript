@@ -22,6 +22,7 @@ harness.
 |---|---|---|---|
 | [`submission-state.ts`](packages/runtime/src/submission-state.ts) | `countConsecutiveRetryableModelErrors` | functional: equals a recursive spec of the backward scan (+ bounded output, termination) | ✓ |
 | [`conversation-reducer.ts`](packages/runtime/src/conversation-reducer.ts) | `isCompleteToolBatch` | length agreement + positional `(id, name)` match between tool calls and results | ✓ |
+| [`usage.ts`](packages/runtime/src/usage.ts) | `addUsage` / `emptyUsage` | commutative monoid — left/right identity, commutativity, associativity | ✓ |
 
 ## What's Verified
 
@@ -77,6 +78,14 @@ shadows and the inline `Extract<…>` parameter type is redirected with a
 `//@ type` override (no signature change). It drove one toolchain addition —
 truthiness of a non-optional object (`!obj → false`), which proves the shipped
 `!call || !result` bounds-guards are dead under the length invariant.
+
+### `addUsage` / `emptyUsage` — [`usage.ts`](packages/runtime/src/usage.ts)
+
+The token-and-cost aggregator is a **commutative monoid**. Over the shipped
+functions (bodies byte-identical), we prove `emptyUsage()` is a left and right
+identity for `addUsage`, and that `addUsage` is commutative and associative —
+each as a spec-only lemma, discharged automatically from the field-wise integer
+sums. No-mutation is inherent: `//@ pure` functions can't mutate their arguments.
 
 ## Running the verification
 
