@@ -22,6 +22,8 @@ import type { PromptUsage } from './types.ts';
 import { addUsage, fromProviderUsage } from './usage.ts';
 
 //@ declare-type AgentMessage { role: string }
+//@ declare-type Usage { totalTokens: number, input: number, output: number, cacheRead: number, cacheWrite: number }
+//@ declare-type DeriveInput { contextWindow: number, maxTokens: number }
 
 // ─── Settings ───────────────────────────────────────────────────────────────
 
@@ -54,6 +56,12 @@ export function deriveCompactionDefaults(input: {
 	contextWindow: number;
 	maxTokens: number;
 }): CompactionSettings {
+	//@ verify
+	//@ type input DeriveInput
+	//@ ensures \result.enabled === true
+	//@ ensures \result.keepRecentTokens === 8000
+	//@ ensures input.contextWindow > 1024 ==> \result.reserveTokens < input.contextWindow
+	//@ ensures input.maxTokens >= 1024 ==> \result.reserveTokens <= input.maxTokens
 	// When `maxTokens` is unknown (e.g. HTTP providers without declared
 	// metadata), fall back to the static reserve.
 	const reserveCap =
@@ -76,6 +84,9 @@ export function deriveCompactionDefaults(input: {
 // ─── Token Estimation ───────────────────────────────────────────────────────
 
 export function calculateContextTokens(usage: Usage): number {
+	//@ verify
+	//@ ensures usage.totalTokens !== 0 ==> \result === usage.totalTokens
+	//@ ensures usage.totalTokens === 0 ==> \result === usage.input + usage.output + usage.cacheRead + usage.cacheWrite
 	return usage.totalTokens || usage.input + usage.output + usage.cacheRead + usage.cacheWrite;
 }
 
@@ -174,6 +185,10 @@ export function shouldCompact(
 	contextWindow: number,
 	settings: CompactionSettings,
 ): boolean {
+	//@ verify
+	//@ ensures !settings.enabled ==> \result === false
+	//@ ensures contextWindow <= 0 ==> \result === false
+	//@ ensures \result === true ==> settings.enabled && contextWindow > 0 && contextTokens > contextWindow - settings.reserveTokens
 	if (!settings.enabled) return false;
 	// `contextWindow <= 0` means unknown — skip threshold; overflow recovery still runs.
 	if (contextWindow <= 0) return false;

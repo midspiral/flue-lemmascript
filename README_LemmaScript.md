@@ -24,6 +24,9 @@ harness.
 | [`conversation-reducer.ts`](packages/runtime/src/conversation-reducer.ts) | `isCompleteToolBatch` | length agreement + positional `(id, name)` match + no duplicate call ids | ✓ |
 | [`usage.ts`](packages/runtime/src/usage.ts) | `addUsage` / `emptyUsage` | commutative monoid — left/right identity, commutativity, associativity | ✓ |
 | [`compaction.ts`](packages/runtime/src/compaction.ts) | `findValidCutPoints` | every returned cut index is in range and never a `toolResult` (no orphan at the cut) | ✓ |
+| [`compaction.ts`](packages/runtime/src/compaction.ts) | `deriveCompactionDefaults` | `enabled`/`keepRecentTokens` passthrough; `maxTokens ≥ 1024 ⟹ reserve ≤ maxTokens`; `contextWindow > 1024 ⟹ reserve < contextWindow` (headroom) | ✓ |
+| [`compaction.ts`](packages/runtime/src/compaction.ts) | `calculateContextTokens` | prefers `totalTokens` when non-zero, else the component-token sum | ✓ |
+| [`compaction.ts`](packages/runtime/src/compaction.ts) | `shouldCompact` | disabled or unknown window ⟹ never fires; fires ⟹ over the reserve threshold | ✓ |
 
 ## What's Verified
 
@@ -99,6 +102,38 @@ returned index is in `[start, end)` and points at a `user` or `assistant`
 message — never a `toolResult` — so a retained suffix can't *begin* with an
 orphaned tool result. Two loop invariants carry both, exactly as in pi's proof;
 the `messages[i]?.role` optional-index access needed no new toolchain support.
+
+### `deriveCompactionDefaults` — [`compaction.ts`](packages/runtime/src/compaction.ts)
+
+Model-aware compaction defaults: reserve is capped at the model's max output and
+clamped by a safety floor for tiny windows. Over the shipped function (body
+byte-identical) we prove `enabled`/`keepRecentTokens` pass through, and two
+guarded bounds:
+
+```
+//@ ensures input.maxTokens >= 1024 ==> \result.reserveTokens <= input.maxTokens
+//@ ensures input.contextWindow > 1024 ==> \result.reserveTokens < input.contextWindow
+```
+
+The second is the **headroom** property — `contextWindow - reserveTokens > 0`, so
+threshold compaction fires on threshold rather than every turn. The `≥ 1024` /
+`> 1024` guards are exact, not incidental: the `Math.max(1024, …)` floor makes
+both bounds **false** below them — for `0 < contextWindow ≤ 1024` the derived
+reserve meets or exceeds the window, the failure mode the clamp's own comment
+claims to prevent. No real model has a sub-1024 window, so this is a boundary the
+proof pins rather than a shipping bug. Dafny discharges the floor-division
+reasoning (`Math.floor(contextWindow / 3)`) automatically.
+
+### `calculateContextTokens` / `shouldCompact` — [`compaction.ts`](packages/runtime/src/compaction.ts)
+
+Two small gate predicates. `calculateContextTokens` prefers a non-zero
+`totalTokens`, else the component-token sum — a JS numeric `||` we prove picks
+each branch by `totalTokens === 0`. `shouldCompact` is proven to never fire when
+disabled or when the window is unknown (`≤ 0`), and to fire only above the
+reserve threshold. Both bodies byte-identical. Together they drove two toolchain
+additions: numeric `||` truthiness (`a || b` on numbers → `a ≠ 0 ? a : b`, which
+previously mis-lowered to `int ∨ int`) and a `//@ declare-type` field list that
+separates on `;` as well as `,` (for the `Usage` shadow).
 
 ## Running the verification
 

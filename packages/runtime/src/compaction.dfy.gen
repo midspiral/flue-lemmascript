@@ -2,7 +2,76 @@
 
 datatype Option<T> = None | Some(value: T)
 
+function JSFloorDiv(a: int, b: int): int
+  requires b != 0
+{
+  if b > 0 then
+    if a >= 0 then a / b
+    else -((-a - 1) / b) - 1
+  else
+    if a <= 0 then (-a) / (-b)
+    else -((a - 1) / (-b)) - 1
+}
+
+function MathMin(a: int, b: int): int { if a <= b then a else b }
+
+function MathMax(a: int, b: int): int { if a >= b then a else b }
+
 datatype AgentMessage = AgentMessage(role: string)
+
+datatype Usage = Usage(totalTokens: int, input: int, output: int, cacheRead: int, cacheWrite: int)
+
+datatype DeriveInput = DeriveInput(contextWindow: int, maxTokens: int)
+
+datatype CompactionSettings = CompactionSettings(enabled: bool, reserveTokens: int, keepRecentTokens: int)
+
+function calculateContextTokens(usage: Usage): int
+{
+  if (usage.totalTokens != 0) then
+    usage.totalTokens
+  else
+    (((usage.input + usage.output) + usage.cacheRead) + usage.cacheWrite)
+}
+
+lemma calculateContextTokens_ensures(usage: Usage)
+  ensures ((usage.totalTokens != 0) ==> (calculateContextTokens(usage) == usage.totalTokens))
+  ensures ((usage.totalTokens == 0) ==> (calculateContextTokens(usage) == (((usage.input + usage.output) + usage.cacheRead) + usage.cacheWrite)))
+{
+}
+
+function shouldCompact(contextTokens: int, contextWindow: int, settings: CompactionSettings): bool
+{
+  if !(settings.enabled) then
+    false
+  else
+    if (contextWindow <= 0) then
+      false
+    else
+      (contextTokens > (contextWindow - settings.reserveTokens))
+}
+
+lemma shouldCompact_ensures(contextTokens: int, contextWindow: int, settings: CompactionSettings)
+  ensures (!(settings.enabled) ==> (shouldCompact(contextTokens, contextWindow, settings) == false))
+  ensures ((contextWindow <= 0) ==> (shouldCompact(contextTokens, contextWindow, settings) == false))
+  ensures ((shouldCompact(contextTokens, contextWindow, settings) == true) ==> ((settings.enabled && (contextWindow > 0)) && (contextTokens > (contextWindow - settings.reserveTokens))))
+{
+}
+
+const DEFAULT_COMPACTION_SETTINGS: CompactionSettings := CompactionSettings(true, 20000, 8000)
+
+method deriveCompactionDefaults(input: DeriveInput) returns (res: CompactionSettings)
+  ensures (res.enabled == true)
+  ensures (res.keepRecentTokens == 8000)
+  ensures ((input.contextWindow > 1024) ==> (res.reserveTokens < input.contextWindow))
+  ensures ((input.maxTokens >= 1024) ==> (res.reserveTokens <= input.maxTokens))
+{
+  var reserveCap := (if (input.maxTokens > 0) then input.maxTokens else DEFAULT_COMPACTION_SETTINGS.reserveTokens);
+  var reserveTokens := MathMin(DEFAULT_COMPACTION_SETTINGS.reserveTokens, reserveCap);
+  if ((input.contextWindow > 0) && ((reserveTokens * 2) >= input.contextWindow)) {
+    reserveTokens := MathMax(1024, JSFloorDiv(input.contextWindow, 3));
+  }
+  return CompactionSettings(true, reserveTokens, DEFAULT_COMPACTION_SETTINGS.keepRecentTokens);
+}
 
 method findValidCutPoints(messages: seq<AgentMessage>, start: int, end: int) returns (res: seq<int>)
   requires (0 <= start)

@@ -43,6 +43,18 @@ All paths below are in `packages/runtime/src/`.
 - **`findValidCutPoints`** (#2) — the pi echo: every returned cut index is in
   range and never a `toolResult` (no orphan at the cut), over Flue's message
   model. In place, no new toolchain.
+- **`deriveCompactionDefaults`** (#5) — reserve clamping: `enabled`/`keepRecentTokens`
+  passthrough, plus the guarded bounds `maxTokens ≥ 1024 ⟹ reserve ≤ maxTokens`
+  and `contextWindow > 1024 ⟹ reserve < contextWindow` (headroom). The `≥ 1024` /
+  `> 1024` guards are **exact** — the `Math.max(1024, …)` floor makes both bounds
+  false at sub-1024 windows (a boundary the proof pins; no real model reaches it).
+  In place, no new toolchain.
+- **`calculateContextTokens` / `shouldCompact`** (#9) — the two gate predicates:
+  `calculateContextTokens` picks `totalTokens` vs the component sum by
+  `totalTokens === 0`; `shouldCompact` never fires when disabled or the window is
+  unknown, and only above the reserve threshold. In place; drove two toolchain
+  additions — numeric `||` truthiness and a `;`-separated `//@ declare-type` field
+  list.
 
 Everything after this point is the roadmap.
 
@@ -220,13 +232,21 @@ roles/ordering).
 
 ## Tier 2 — Good Fit (Some Modeling Needed)
 
-### 5. `deriveCompactionDefaults` — Reserve Clamping (`compaction.ts:51`)
+### 5. `deriveCompactionDefaults` — Reserve Clamping (`compaction.ts:51`) — ✅ **Verified in place**
 
-Pure integer arithmetic (`Math.min`/`Math.max`/`Math.floor`). Like CharmChat's
-80%-threshold target.
-- `input.maxTokens > 0 ⟹ reserveTokens <= input.maxTokens`.
-- After the tiny-window clamp: `input.contextWindow > 0 ⟹ reserveTokens < contextWindow` (compaction can actually fire) **and** `reserveTokens >= 1024`.
-- `keepRecentTokens` is passed through unchanged.
+Pure integer arithmetic (`Math.min`/`Math.max`/`Math.floor`). **Proven** (body
+byte-identical), with a correction to the originally-proposed properties:
+- `input.maxTokens >= 1024 ⟹ reserveTokens <= input.maxTokens` (cap).
+- `input.contextWindow > 1024 ⟹ reserveTokens < contextWindow` (headroom —
+  compaction fires on threshold, not every turn).
+- `enabled` and `keepRecentTokens` pass through unchanged.
+
+The originally-proposed unguarded forms (`maxTokens > 0 ⟹ …`, `contextWindow > 0 ⟹ …`)
+are **false**: the `Math.max(1024, …)` safety floor makes reserve meet or exceed
+the window/maxTokens once they drop below 1024. So the `≥ 1024` / `> 1024` guards
+are exact. No real model has a sub-1024 window — a boundary the proof pins, not a
+shipping bug. Dafny discharges the `Math.floor(contextWindow / 3)` reasoning
+automatically.
 
 ### 6. `addUsage` / `emptyUsage` / `fromProviderUsage` — Usage Algebra (`usage.ts`)
 
@@ -238,13 +258,20 @@ A commutative monoid over token/cost tuples — a clean algebraic target.
 
 Model `PromptUsage` as a Dafny datatype of ints (including the nested `cost`).
 
-### 7. `computeFileLists` — Read/Modified Partition (`compaction.ts:217`)
+### 7. `computeFileLists` — Read/Modified Partition (`compaction.ts:217`) — ⏸ blocked on set-spread
 
 Set logic (`modified = edited ∪ written`, `readOnly = read \ modified`, both
 sorted). Analogue of CharmChat's cited/uncited partition.
 - `readFiles` and `modifiedFiles` are disjoint.
 - `modifiedFiles === sort(edited ∪ written)`.
 - Every `readFiles` element is in `read` and not in `modified`.
+
+**Not a warm-up.** Needs subset features not yet present: set-spread into array
+literals (`[...edited, ...written]` — the extractor throws), set→array spread,
+and an inline object *return* type. One prerequisite landed: bare `.sort()` now
+models as a permutation (`multiset` preserved) rather than emitting a broken
+`SeqSortBy(xs, undefined)` — enough for the membership/disjointness properties,
+which don't depend on the ordering. The set-spread modeling is the open blocker.
 
 ### 8. `buildConversationContextEntries` — Post-Compaction Slice (`conversation-reducer.ts:660`)
 
@@ -254,7 +281,7 @@ Finds the latest compaction, resolves `keptStart`, and concatenates
   overlap and don't include the compaction entry twice.
 - No-compaction path returns the full projection unchanged.
 
-### 9. `shouldCompact` + `calculateContextTokens` (`compaction.ts:170`, `:76`)
+### 9. `shouldCompact` + `calculateContextTokens` (`compaction.ts:170`, `:76`) — ✅ **Verified in place**
 
 Tiny composable predicates — good for wiring/first-light.
 - `contextWindow <= 0 ⟹ !shouldCompact` (unknown window never threshold-fires).
@@ -326,6 +353,9 @@ boundary — keep `isUuid` opaque).
 | ✅ | `isCompleteToolBatch` (#3) | **Done** — length + positional `(id, name)` match, in place. |
 | ✅ | `addUsage` monoid (#6) | **Done** — commutative monoid, no new toolchain. |
 | ✅ | `findValidCutPoints` (#2) | **Done** — no orphan at the cut, over Flue's model. |
+| ✅ | `deriveCompactionDefaults` (#5) | **Done** — guarded reserve-clamp bounds; guards proven exact. |
+| ✅ | `calculateContextTokens` / `shouldCompact` (#9) | **Done** — gate predicates; drove numeric `||` + `;`-separated `declare-type`. |
+| ⏸ | `computeFileLists` (#7) | Blocked on set-spread modeling; bare `.sort()` (permutation) landed. |
 | → | `pathToContextEntries` no-orphan (#4) | Flue's projection-layer complement to pi (unlocked by #3). |
 | | `classifySubmissionState` (#1) | Flagship Flue-specific correctness result. |
 
