@@ -307,15 +307,40 @@ function isCompletedAssistantResponse(message: AssistantMessage): boolean {
 	return message.stopReason === 'stop' || message.stopReason === 'length';
 }
 
+// Spec-level mirror of the backward scan: over the length-`n` prefix, count
+// trailing retryable-assistant errors, skipping compaction and non-assistant
+// messages, stopping at the first user message or non-retryable assistant.
+// `countConsecutiveRetryableModelErrors` is proven equal to this (spec-only).
+//@ pure
+function countRetryableSuffix(
+	entries: readonly CanonicalSubmissionEntry[],
+	n: number,
+): number {
+	//@ verify
+	//@ requires 0 <= n && n <= entries.length
+	//@ decreases n
+	//@ type n nat
+	if (n === 0) return 0;
+	const entry = entries[n - 1]!;
+	if (entry.type !== 'message') return countRetryableSuffix(entries, n - 1);
+	if (entry.message.role === 'user') return 0;
+	if (entry.message.role !== 'assistant') return countRetryableSuffix(entries, n - 1);
+	if (!isRetryableModelError(entry.message as AssistantMessage)) return 0;
+	return 1 + countRetryableSuffix(entries, n - 1);
+}
+
 export function countConsecutiveRetryableModelErrors(
 	entries: readonly CanonicalSubmissionEntry[],
 ): number {
 	//@ verify
+	//@ ensures \result === countRetryableSuffix(entries, entries.length)
 	//@ ensures 0 <= \result && \result <= entries.length
 	let count = 0;
 	for (let i = entries.length - 1; i >= 0; i--) {
+		//@ invariant -1 <= i
 		//@ invariant 0 <= count && count <= entries.length - 1 - i
 		//@ invariant count <= entries.length
+		//@ invariant count + countRetryableSuffix(entries, i + 1) === countRetryableSuffix(entries, entries.length)
 		//@ decreases i + 1
 		const entry = entries[i];
 		if (entry?.type !== 'message') continue;

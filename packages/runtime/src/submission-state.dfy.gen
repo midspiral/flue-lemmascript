@@ -10,16 +10,45 @@ type AssistantMessage = AgentMessage
 
 datatype CanonicalSubmissionEntry = message(id: string, message: AgentMessage) | compaction(id: string)
 
+function countRetryableSuffix(entries: seq<CanonicalSubmissionEntry>, n: nat): int
+  requires (0 <= n)
+  requires (n <= |entries|)
+  decreases n
+{
+  if (n == 0) then
+    0
+  else
+    var entry := entries[(n - 1)];
+    match entry {
+      case message(i_entry_id, i_entry_message) =>
+        if (i_entry_message.role == "user") then
+          0
+        else
+          if (i_entry_message.role != "assistant") then
+            countRetryableSuffix(entries, (n - 1))
+          else
+            if !(isRetryableModelError(i_entry_message)) then
+              0
+            else
+              (1 + countRetryableSuffix(entries, (n - 1)))
+      case compaction(i_entry_id) =>
+        countRetryableSuffix(entries, (n - 1))
+    }
+}
+
 method countConsecutiveRetryableModelErrors(entries: seq<CanonicalSubmissionEntry>) returns (res: int)
+  ensures (res == countRetryableSuffix(entries, |entries|))
   ensures (0 <= res)
   ensures (res <= |entries|)
 {
   var count := 0;
   var i := (|entries| - 1);
   while (i >= 0)
+    invariant (-1 <= i)
     invariant (0 <= count)
     invariant (count <= ((|entries| - 1) - i))
     invariant (count <= |entries|)
+    invariant ((count + countRetryableSuffix(entries, (i + 1))) == countRetryableSuffix(entries, |entries|))
     decreases (i + 1)
   {
     var entry := (if ((0 <= i) && (i < |entries|)) then Option.Some(entries[i]) else Option.None);
