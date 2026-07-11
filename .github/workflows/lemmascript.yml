@@ -1,0 +1,14 @@
+name: LemmaScript
+
+on:
+  push:
+    branches: [main, lemmascript]
+  pull_request:
+    branches: [main, lemmascript]
+
+jobs:
+  verify:
+    uses: midspiral/LemmaScript/.github/workflows/verify.yml@main
+    with:
+      backend: dafny
+      typecheck: false
