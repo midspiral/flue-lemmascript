@@ -1,6 +1,7 @@
 const TASK_SESSION_PREFIX = 'task:';
 const ACTION_SCOPE_PREFIX = 'action:';
 const SESSION_STORAGE_PREFIX = 'agent-session:';
+//@ skip
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 interface SessionStorageIdentity {
