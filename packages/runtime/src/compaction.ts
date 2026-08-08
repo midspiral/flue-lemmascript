@@ -58,10 +58,10 @@ export function deriveCompactionDefaults(input: {
 }): CompactionSettings {
 	//@ verify
 	//@ type input DeriveInput
-	//@ ensures \result.enabled === true
-	//@ ensures \result.keepRecentTokens === 8000
-	//@ ensures input.contextWindow > 1024 ==> \result.reserveTokens < input.contextWindow
-	//@ ensures input.maxTokens >= 1024 ==> \result.reserveTokens <= input.maxTokens
+	//@ ensures $result.enabled === true
+	//@ ensures $result.keepRecentTokens === 8000
+	//@ ensures implies(input.contextWindow > 1024, $result.reserveTokens < input.contextWindow)
+	//@ ensures implies(input.maxTokens >= 1024, $result.reserveTokens <= input.maxTokens)
 	// When `maxTokens` is unknown (e.g. HTTP providers without declared
 	// metadata), fall back to the static reserve.
 	const reserveCap =
@@ -85,8 +85,8 @@ export function deriveCompactionDefaults(input: {
 
 export function calculateContextTokens(usage: Usage): number {
 	//@ verify
-	//@ ensures usage.totalTokens !== 0 ==> \result === usage.totalTokens
-	//@ ensures usage.totalTokens === 0 ==> \result === usage.input + usage.output + usage.cacheRead + usage.cacheWrite
+	//@ ensures implies(usage.totalTokens !== 0, $result === usage.totalTokens)
+	//@ ensures implies(usage.totalTokens === 0, $result === usage.input + usage.output + usage.cacheRead + usage.cacheWrite)
 	return usage.totalTokens || usage.input + usage.output + usage.cacheRead + usage.cacheWrite;
 }
 
@@ -186,9 +186,9 @@ export function shouldCompact(
 	settings: CompactionSettings,
 ): boolean {
 	//@ verify
-	//@ ensures !settings.enabled ==> \result === false
-	//@ ensures contextWindow <= 0 ==> \result === false
-	//@ ensures \result === true ==> settings.enabled && contextWindow > 0 && contextTokens > contextWindow - settings.reserveTokens
+	//@ ensures implies(!settings.enabled, $result === false)
+	//@ ensures implies(contextWindow <= 0, $result === false)
+	//@ ensures implies($result === true, settings.enabled && contextWindow > 0 && contextTokens > contextWindow - settings.reserveTokens)
 	if (!settings.enabled) return false;
 	// `contextWindow <= 0` means unknown — skip threshold; overflow recovery still runs.
 	if (contextWindow <= 0) return false;
@@ -413,13 +413,13 @@ function findValidCutPoints(messages: AgentMessage[], start: number, end: number
 	//@ verify
 	//@ requires 0 <= start && start <= end
 	//@ requires end <= messages.length
-	//@ ensures forall(k: nat, k < \result.length ==> start <= \result[k] && \result[k] < end)
-	//@ ensures forall(k: nat, k < \result.length ==> messages[\result[k]].role === 'user' || messages[\result[k]].role === 'assistant')
+	//@ ensures forall((k: nat) => implies(k < $result.length, start <= $result[k] && $result[k] < end))
+	//@ ensures forall((k: nat) => implies(k < $result.length, messages[$result[k]].role === "user" || messages[$result[k]].role === "assistant"))
 	const cutPoints: number[] = [];
 	for (let i = start; i < end; i++) {
 		//@ invariant start <= i && i <= end
-		//@ invariant forall(k: nat, k < cutPoints.length ==> start <= cutPoints[k] && cutPoints[k] < i)
-		//@ invariant forall(k: nat, k < cutPoints.length ==> messages[cutPoints[k]].role === 'user' || messages[cutPoints[k]].role === 'assistant')
+		//@ invariant forall((k: nat) => implies(k < cutPoints.length, start <= cutPoints[k] && cutPoints[k] < i))
+		//@ invariant forall((k: nat) => implies(k < cutPoints.length, messages[cutPoints[k]].role === "user" || messages[cutPoints[k]].role === "assistant"))
 		//@ decreases end - i
 		const role = messages[i]?.role;
 		if (role === 'user' || role === 'assistant') {

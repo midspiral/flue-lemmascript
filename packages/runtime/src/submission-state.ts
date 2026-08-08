@@ -333,8 +333,8 @@ export function countConsecutiveRetryableModelErrors(
 	entries: readonly CanonicalSubmissionEntry[],
 ): number {
 	//@ verify
-	//@ ensures \result === countRetryableSuffix(entries, entries.length)
-	//@ ensures 0 <= \result && \result <= entries.length
+	//@ ensures $result === countRetryableSuffix(entries, entries.length)
+	//@ ensures 0 <= $result && $result <= entries.length
 	let count = 0;
 	for (let i = entries.length - 1; i >= 0; i--) {
 		//@ invariant -1 <= i

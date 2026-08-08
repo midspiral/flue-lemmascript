@@ -45,7 +45,7 @@ spec-level mirror `countRetryableSuffix` (itself `//@ verify`-checked for
 termination):
 
 ```
-//@ ensures \result === countRetryableSuffix(entries, entries.length)
+//@ ensures $result === countRetryableSuffix(entries, entries.length)
 ```
 
 The proof rests on one loop invariant relating the running `count` to the spec
@@ -74,10 +74,9 @@ matches its call positionally by `(id, name)`, and no call id repeats (the `seen
 set is proven to hold exactly the processed ids):
 
 ```
-//@ ensures \result ==> toolCalls.length === results.length
-//@ ensures \result ==> forall k. results[k].toolCallId === toolCalls[k].id
-                                && results[k].toolName === toolCalls[k].name
-//@ ensures \result ==> forall a, b. a < b ==> toolCalls[a].id !== toolCalls[b].id
+//@ ensures implies($result, toolCalls.length === results.length)
+//@ ensures implies($result, forall((k: nat) => implies(k < toolCalls.length, results[k].toolCallId === toolCalls[k].id && results[k].toolName === toolCalls[k].name)))
+//@ ensures implies($result, forall((a: nat) => forall((b: nat) => implies(a < b && b < toolCalls.length, toolCalls[a].id !== toolCalls[b].id))))
 ```
 
 Body byte-identical; the tool-call/result element types are `//@ declare-type`
@@ -112,8 +111,8 @@ byte-identical) we prove `enabled`/`keepRecentTokens` pass through, and two
 guarded bounds:
 
 ```
-//@ ensures input.maxTokens >= 1024 ==> \result.reserveTokens <= input.maxTokens
-//@ ensures input.contextWindow > 1024 ==> \result.reserveTokens < input.contextWindow
+//@ ensures implies(input.maxTokens >= 1024, $result.reserveTokens <= input.maxTokens)
+//@ ensures implies(input.contextWindow > 1024, $result.reserveTokens < input.contextWindow)
 ```
 
 The second is the **headroom** property — `contextWindow - reserveTokens > 0`, so
@@ -144,7 +143,7 @@ the predicate matches that definition exactly, and — the safety result — tha
 two name **constructors** produce names the guard always rejects:
 
 ```
-//@ ensures !isPublicSessionName(\result)   // on createTaskSessionName / createActionScopeName
+//@ ensures !isPublicSessionName($result)  // on createTaskSessionName / createActionScopeName
 ```
 
 so a reserved name can never be mistaken for a public one. `startsWith` lowers to

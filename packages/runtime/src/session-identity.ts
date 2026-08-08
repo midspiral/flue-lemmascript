@@ -16,19 +16,19 @@ export function isUuid(value: string): boolean {
 
 function isTaskSessionName(name: string): boolean {
 	//@ verify
-	//@ ensures \result === name.startsWith(TASK_SESSION_PREFIX)
+	//@ ensures $result === name.startsWith(TASK_SESSION_PREFIX)
 	return name.startsWith(TASK_SESSION_PREFIX);
 }
 
 function isActionScopeName(name: string): boolean {
 	//@ verify
-	//@ ensures \result === name.startsWith(ACTION_SCOPE_PREFIX)
+	//@ ensures $result === name.startsWith(ACTION_SCOPE_PREFIX)
 	return name.startsWith(ACTION_SCOPE_PREFIX);
 }
 
 export function isPublicSessionName(name: string): boolean {
 	//@ verify
-	//@ ensures \result === (!name.startsWith(TASK_SESSION_PREFIX) && !name.startsWith(ACTION_SCOPE_PREFIX))
+	//@ ensures $result === (!name.startsWith(TASK_SESSION_PREFIX) && !name.startsWith(ACTION_SCOPE_PREFIX))
 	return !isTaskSessionName(name) && !isActionScopeName(name);
 }
 
@@ -45,7 +45,7 @@ export function assertPublicSessionName(name: string): void {
 
 export function createTaskSessionName(parentSession: string, taskId: string): string {
 	//@ verify
-	//@ ensures !isPublicSessionName(\result)
+	//@ ensures !isPublicSessionName($result)
 	return `${TASK_SESSION_PREFIX}${parentSession}:${taskId}`;
 }
 
@@ -59,7 +59,7 @@ export function createSessionStorageKey(
 
 export function createActionScopeName(invocationId: string): string {
 	//@ verify
-	//@ ensures !isPublicSessionName(\result)
+	//@ ensures !isPublicSessionName($result)
 	return `${ACTION_SCOPE_PREFIX}${invocationId}`;
 }
 
