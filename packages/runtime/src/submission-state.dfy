@@ -55,20 +55,20 @@ method countConsecutiveRetryableModelErrors(entries: seq<CanonicalSubmissionEntr
     match entry {
       case Some(i_entry_val) =>
         match i_entry_val {
-          case message(i__entry_val_id, i__entry_val_message) =>
-            if (i__entry_val_message.role == "user") {
+          case message(_, _) =>
+            if (i_entry_val.message.role == "user") {
               return count;
             }
-            if (i__entry_val_message.role != "assistant") {
+            if (i_entry_val.message.role != "assistant") {
               i := (i - 1);
               continue;
             }
-            if !(isRetryableModelError(i__entry_val_message)) {
+            if !(isRetryableModelError(i_entry_val.message)) {
               return count;
             }
             count := (count + 1);
             i := (i - 1);
-          case compaction(i__entry_val_id) =>
+          case compaction(_) =>
             i := (i - 1);
             continue;
         }
